@@ -1,9 +1,12 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-typedef std::pair<std::vector<double>,std::vector<double>> Trajectory;
+#include <vector>
+
+typedef std::pair<std::vector<double>,std::vector<double>> TrajectoryXY;
 
 typedef struct {
+  int id;
   double x;
   double y;
   double vx;
@@ -22,17 +25,24 @@ typedef struct {
 } Localization;
 
 enum class Prediction {
-  STRAIGHT = 0,
-  CHANGE_LEFT,
-  CHANGE_RIGHT
+  kStraight,
+  kChangeLeft,
+  kChangeRight
 };
 
 enum class Lane {
-  OutLeft = 0,
-  Left,
-  Center,
-  Right,
-  OutRight
+  kOutLeft = -1,
+  kLeft = 0,
+  kCenter = 1,
+  kRight = 2,
+  kOutRight = 3
 };
 
-#endif
+enum class State {
+  kStart,
+  kKeepLane,
+  kPrepareChangeLane,
+  kChangeLane,
+};
+
+#endif // TYPES_H

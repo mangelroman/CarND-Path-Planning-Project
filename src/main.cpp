@@ -171,19 +171,31 @@ int main() {
         	// Previous path data given to the Planner
         	vector<double> previous_path_x = j[1]["previous_path_x"];
         	vector<double> previous_path_y = j[1]["previous_path_y"];
-          Trajectory previous_trajectory = make_pair(previous_path_x, previous_path_y);
+          TrajectoryXY previous_trajectory = make_pair(previous_path_x, previous_path_y);
 
         	// Previous path's end s and d values
         	double end_path_s = j[1]["end_path_s"];
         	double end_path_d = j[1]["end_path_d"];
 
         	// Sensor Fusion Data, a list of all other cars on the same side of the road.
-        	vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
+        	vector<vector<double>> sf_data = j[1]["sensor_fusion"];
+          vector<SensorFusion> sensor_fusion(sf_data.size());
+          int index = 0;
+          for(auto&& item : sf_data) {
+            sensor_fusion[index].id = item[0];
+            sensor_fusion[index].x = item[1];
+            sensor_fusion[index].y = item[2];
+            sensor_fusion[index].vx = item[3];
+            sensor_fusion[index].vy = item[4];
+            sensor_fusion[index].s = item[5];
+            sensor_fusion[index].d = item[6];
+            index++;
+          }
 
         	json msgJson;
-          planner.Update(loc, sensor_fusion, previous_trajectory);
-          auto trajectory = planner.Plan();
-          //cout << endl;
+
+          auto trajectory = planner.Update(loc, sensor_fusion, previous_trajectory);
+
         	msgJson["next_x"] = get<0>(trajectory);
         	msgJson["next_y"] = get<1>(trajectory);
 

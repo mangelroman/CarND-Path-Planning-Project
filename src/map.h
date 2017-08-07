@@ -4,21 +4,21 @@
 #include <vector>
 
 #include "types.h"
+#include "spline.h"
 
 class Map {
 
 private:
 
-  const size_t NUMBER_OF_LANES = 3;
-  const double LANE_WIDTH = 4.0;
-  const double ROAD_LENGTH = 6945.554;
+  const size_t kNumberOfLanes = 3;
+  const double kLaneWidth = 4.0;
+  const double kRoadLength = 6945.554;
+  const int    kNumberOfPaddingSamples = 10;
 
-  // Coordinates of the way points
-  std::vector<double> x_;
-  std::vector<double> y_;
-  std::vector<double> s_;
-  std::vector<double> dx_;
-  std::vector<double> dy_;
+  tk::spline s_x_;
+  tk::spline s_y_;
+  tk::spline s_dx_;
+  tk::spline s_dy_;
 
 public:
 
@@ -26,11 +26,11 @@ public:
   ~Map();
 
   std::pair<double, double> FrenetToCartesian(double s, double d) const;
-  //std::pair<double, double> cartesianToFrenet(double x, double y) const;
+  Lane GetLane(double d) const;
 
-  double GetRoadLength() const { return ROAD_LENGTH; }
-  double GetLaneWidth() const { return LANE_WIDTH; }
-  size_t GetNumberOfLanes() const { return NUMBER_OF_LANES; }
+  double GetRoadLength() const { return kNumberOfLanes; }
+  double GetLaneWidth() const { return kLaneWidth; }
+  size_t GetNumberOfLanes() const { return kRoadLength; }
 
 };
 

@@ -13,24 +13,42 @@ Planner::Planner(const std::string &map_file): map_(map_file) {
 Planner::~Planner() {
 }
 
-void Planner::Update(Localization &localization,
-                     std::vector<std::vector<double>> &sf_data,
-                     Trajectory &previous_trajectory)
+TrajectoryXY Planner::Update(Localization &localization,
+                     std::vector<SensorFusion> &sensor_fusion,
+                     TrajectoryXY &previous_trajectory)
 {
-  localization_ = localization;
-}
-
-Trajectory Planner::Plan() {
-
-  vector<double> next_x_vals;
-  vector<double> next_y_vals;
-
-  double dist_inc = 0.4;
-  for(int i = 0; i < 50; i++) {
-    auto xy = map_.FrenetToCartesian(localization_.s + dist_inc * i, localization_.d);
-    next_x_vals.push_back(get<0>(xy));
-    next_y_vals.push_back(get<1>(xy));
+  // Update visible vehicles
+  for (auto &vehicle: vehicles_) {
+      vehicle.ClearVisible();
   }
 
-  return make_pair(next_x_vals, next_y_vals);
+  for(SensorFusion &sf : sensor_fusion) {
+
+    bool found = false;
+    for (auto &vehicle: vehicles_) {
+      if (vehicle.GetId() == sf.id) {
+        vehicle.Update(sf);
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      Vehicle vehicle(sf.id);
+      vehicle.Update(sf);
+      vehicles_.push_back(vehicle);
+    }
+  }
+
+  for (auto it = vehicles_.begin(); it != vehicles_.end(); it++) {
+    if (it->IsVisible()) {
+      it->Predict();
+    }
+    else {
+      vehicles_.erase(it);
+    }
+  }
+
+  auto state = behavior_.Update(map_, localization, vehicles_);
+  return trajectory_.Generate(map_, localization, previous_trajectory, state);
 }

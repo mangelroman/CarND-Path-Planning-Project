@@ -10,17 +10,21 @@
 class Behavior {
 
 private:
-  State state_;
-  Lane target_lane_;
+  const double kMaxTargetSpeed = 22;
+  const double kMinimumVehicleDistance = 30;
 
-  Lane SelectBestLane(Lane current_lane, std::list<Vehicle> &vehicles);
+  BehaviorInfo info_;
+
+  void SelectTargets(Map &map, Localization &localization, std::list<Vehicle> &vehicles);
 
 public:
 
   Behavior();
   ~Behavior();
 
-  std::pair<State,Lane> Update(Map &map, Localization &localization, std::list<Vehicle> &vehicles);
+  void Reset();
+
+  BehaviorInfo Update(Map &map, Localization &localization, std::list<Vehicle> &vehicles);
 
 };
 

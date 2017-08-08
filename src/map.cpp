@@ -9,8 +9,10 @@
 
 #include "spline.h"
 
-Map::Map(const std::string &map_file) {
-  std::ifstream ifs(map_file, std::ifstream::in);
+using namespace std;
+
+Map::Map(const string &map_file) {
+  ifstream ifs(map_file, ifstream::in);
 
   double x;
   double y;
@@ -18,15 +20,15 @@ Map::Map(const std::string &map_file) {
   double dx;
   double dy;
 
-  std::vector<double> x_wp;
-  std::vector<double> y_wp;
-  std::vector<double> s_wp;
-  std::vector<double> dx_wp;
-  std::vector<double> dy_wp;
+  vector<double> x_wp;
+  vector<double> y_wp;
+  vector<double> s_wp;
+  vector<double> dx_wp;
+  vector<double> dy_wp;
 
-  std::string line;
+  string line;
   while (getline(ifs, line)) {
-    std::istringstream iss(line);
+    istringstream iss(line);
 
     iss >> x;
     iss >> y;
@@ -60,12 +62,15 @@ Map::Map(const std::string &map_file) {
 
 Map::~Map() {}
 
-std::pair<double, double> Map::FrenetToCartesian(double s, double d) const {
+pair<double, double> Map::FrenetToCartesian(pair<double,double> sd) const {
+
+  double s = get<0>(sd);
+  double d = get<1>(sd);
 
   double x = s_x_(s) + d * s_dx_(s);
   double y = s_y_(s) + d * s_dy_(s);
 
-  return std::make_pair(x, y);
+  return make_pair(x, y);
 }
 
 Lane Map::GetLane(double d) const {
@@ -86,4 +91,8 @@ Lane Map::GetLane(double d) const {
   }
 
   return Lane::kOutRight;
+}
+
+double Map::GetCenterOfLane(Lane lane) const {
+  return (double(lane) + 0.5) * kLaneWidth;
 }

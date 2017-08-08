@@ -1,47 +1,107 @@
 #include "behavior.h"
 
+#include <iostream>
 #include <cmath>
 #include <map>
 
 using namespace std;
 
-Behavior::Behavior(): state_(State::kStart) {
+Behavior::Behavior() {
+  Reset();
 }
 
 Behavior::~Behavior() {
 }
 
-Lane Behavior::SelectBestLane(Lane current_lane, std::list<Vehicle> &vehicles) {
-  return current_lane;
+void Behavior::Reset() {
+  info_.state = State::kStop;
+  info_.target_lane = Lane::kCenter;
+  info_.target_speed = 0;
 }
 
-std::pair<State,Lane> Behavior::Update(Map &map, Localization &localization, std::list<Vehicle> &vehicles) {
+void Behavior::SelectTargets(Map &map, Localization &localization, std::list<Vehicle> &vehicles) {
 
   Lane current_lane = map.GetLane(localization.d);
 
-  switch(state_) {
+  switch(current_lane) {
+    case Lane::kOutLeft:
+      info_.target_lane = Lane::kLeft;
+      return;
+
+    case Lane::kOutRight:
+      info_.target_lane = Lane::kRight;
+      return;
+
+    default:
+      break;
+  }
+
+  for (auto vehicle : vehicles) {
+    if (vehicle.GetLane() == current_lane) {
+      auto vehicle_sd = vehicle.GetLocation();
+      double distance = vehicle_sd.first - localization.s;
+
+      if ((distance < kMinimumVehicleDistance) && (distance > 0) && (vehicle.GetVelocity() < localization.v)) {
+        switch(current_lane) {
+          case Lane::kOutLeft:
+            info_.target_lane = Lane::kLeft;
+            break;
+
+          case Lane::kLeft:
+            info_.target_lane = Lane::kCenter;
+            break;
+
+          case Lane::kCenter:
+            info_.target_lane = Lane::kLeft;
+            break;
+
+          case Lane::kRight:
+            info_.target_lane = Lane::kCenter;
+            break;
+
+          case Lane::kOutRight:
+            info_.target_lane = Lane::kRight;
+            break;
+        }
+      }
+    }
+  }
+}
+
+BehaviorInfo Behavior::Update(Map &map, Localization &localization, std::list<Vehicle> &vehicles) {
+
+  Lane current_lane = map.GetLane(localization.d);
+
+  switch(info_.state) {
+    case State::kStop:
+      info_.state = State::kStart;
+      info_.target_lane = current_lane;
+      info_.target_speed = kMaxTargetSpeed;
+      break;
+
     case State::kStart:
-      state_ = State::kKeepLane;
-      target_lane_ = current_lane;
+      info_.state = State::kKeepLane;
+      info_.target_lane = current_lane;
+      info_.target_speed = kMaxTargetSpeed;
       break;
 
     case State::kKeepLane:
-      target_lane_ = SelectBestLane(current_lane, vehicles);
-      if (target_lane_ != current_lane) {
-        state_ = State::kPrepareChangeLane;
+      SelectTargets(map, localization, vehicles);
+      if (info_.target_lane != current_lane) {
+        info_.state = State::kPrepareChangeLane;
       }
       break;
 
     case State::kPrepareChangeLane:
-      state_ = State::kChangeLane;
+      info_.state = State::kChangeLane;
       break;
 
     case State::kChangeLane:
-      if (current_lane == target_lane_) {
-        state_ = State::kKeepLane;
+      if (current_lane == info_.target_lane) {
+        info_.state = State::kKeepLane;
       }
       break;
   }
 
-  return make_pair(state_, target_lane_);
+  return info_;
 }

@@ -3,7 +3,30 @@
 
 #include <vector>
 
+enum class Prediction {
+  kStraight,
+  kChangeLeft,
+  kChangeRight
+};
+
+enum class Lane {
+  kOutLeft = -1,
+  kLeft = 0,
+  kCenter = 1,
+  kRight = 2,
+  kOutRight = 3
+};
+
+enum class State {
+  kStop,
+  kStart,
+  kKeepLane,
+  kPrepareChangeLane,
+  kChangeLane,
+};
+
 typedef std::pair<std::vector<double>,std::vector<double>> TrajectoryXY;
+typedef std::pair<double,double> FrenetPoint;
 
 typedef struct {
   int id;
@@ -24,25 +47,10 @@ typedef struct {
   double d;
 } Localization;
 
-enum class Prediction {
-  kStraight,
-  kChangeLeft,
-  kChangeRight
-};
-
-enum class Lane {
-  kOutLeft = -1,
-  kLeft = 0,
-  kCenter = 1,
-  kRight = 2,
-  kOutRight = 3
-};
-
-enum class State {
-  kStart,
-  kKeepLane,
-  kPrepareChangeLane,
-  kChangeLane,
-};
+typedef struct {
+  State state;
+  Lane target_lane;
+  double target_speed;
+} BehaviorInfo;
 
 #endif // TYPES_H

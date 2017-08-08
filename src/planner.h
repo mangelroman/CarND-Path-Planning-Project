@@ -10,6 +10,8 @@
 #include "behavior.h"
 #include "trajectory.h"
 
+// TODO: take into account s discontinuity
+
 class Planner {
 
 private:
@@ -17,16 +19,21 @@ private:
   std::list<Vehicle> vehicles_;
   Behavior behavior_;
   Trajectory trajectory_;
+  int tick_;
 
 public:
 
   Planner(const std::string &map_file);
   ~Planner();
 
+  void Reset();
+
   TrajectoryXY Update(
     Localization &localization,
     std::vector<SensorFusion> &sf_data,
-    TrajectoryXY &previous_trajectory);
+    TrajectoryXY &previous_trajectory,
+    FrenetPoint &previous_coordinates
+  );
 
 };
 

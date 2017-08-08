@@ -25,8 +25,9 @@ public:
   Map(const std::string &filename);
   ~Map();
 
-  std::pair<double, double> FrenetToCartesian(double s, double d) const;
+  std::pair<double, double> FrenetToCartesian(std::pair<double,double> sd) const;
   Lane GetLane(double d) const;
+  double GetCenterOfLane(Lane lane) const;
 
   double GetRoadLength() const { return kNumberOfLanes; }
   double GetLaneWidth() const { return kLaneWidth; }

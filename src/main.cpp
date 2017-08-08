@@ -176,6 +176,7 @@ int main() {
         	// Previous path's end s and d values
         	double end_path_s = j[1]["end_path_s"];
         	double end_path_d = j[1]["end_path_d"];
+          FrenetPoint previous_coordinates = make_pair(end_path_s, end_path_d);
 
         	// Sensor Fusion Data, a list of all other cars on the same side of the road.
         	vector<vector<double>> sf_data = j[1]["sensor_fusion"];
@@ -194,10 +195,10 @@ int main() {
 
         	json msgJson;
 
-          auto trajectory = planner.Update(loc, sensor_fusion, previous_trajectory);
+          auto trajectory = planner.Update(loc, sensor_fusion, previous_trajectory, previous_coordinates);
 
-        	msgJson["next_x"] = get<0>(trajectory);
-        	msgJson["next_y"] = get<1>(trajectory);
+        	msgJson["next_x"] = trajectory.first;
+        	msgJson["next_y"] = trajectory.second;
 
         	auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
@@ -226,8 +227,9 @@ int main() {
     }
   });
 
-  h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
+  h.onConnection([&h,&planner](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
     std::cout << "Connected!!!" << std::endl;
+    planner.Reset();
   });
 
   h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code,

@@ -20,7 +20,7 @@ Trajectory::~Trajectory() {
 void Trajectory::Reset() {
 }
 
-vector<double> Trajectory::JMT(vector<double> start, vector<double> end, double t) {
+vector<double> Trajectory::JMT(vector<double> &start, vector<double> &end, double t) {
 
   double t2 = t * t;
   double t3 = t2 * t;
@@ -53,62 +53,81 @@ double Trajectory::PolyEval(vector<double> &coeffs, double x) {
 
 TrajectoryXY Trajectory::Generate(
   Map &map,
-  Localization &localization,
+  Localization &loc,
   TrajectoryXY &previous_trajectory,
   FrenetPoint &previous_coordinates,
   BehaviorInfo &behavior)
 {
+  if (loc.s < sd_points_[0].s) {
+    cout << "NEW LAP!!! Loc= " << loc.s << " Path[0]=" << sd_points_[0].s << endl;
+    for (int i = 0; i < kNumberOfPoints; i++) {
+      sd_points_[i].s -= map.GetRoadLength();
+    }
+  }
+
   State state = behavior.state;
   double target_d = map.GetCenterOfLane(behavior.target_lane);
   double target_speed = behavior.target_speed;
-  int consumed_points = kNumberOfPoints - previous_trajectory.first.size();
+  int consumed_points = kNumberOfPoints - previous_trajectory.x.size();
 
   switch(state) {
+
+    case State::kStart:
+      break;
+
     case State::kStop:
       break;
 
-    case State::kStart: {
-        double s = localization.s;
-        double d = localization.d;
-        double v = localization.v;
-
-        double dd = (target_d - d) / kNumberOfPoints;
+    case State::kEmergencyBreak: {
+        FrenetPoint new_point;
+        new_point.s = loc.s;
+        new_point.d = loc.d;
+        double v = loc.v;
 
         for (int i = 0; i < kNumberOfPoints; i++) {
 
-          s += v * kTimeBetweenPoints;
+          new_point.s += v * kTimeBetweenPoints;
 
-          if (v < target_speed) {
+          if (v > target_speed) {
             // Apply Constant acceleration
-            s += kMaxLongitudinalAcceleration * pow(kTimeBetweenPoints, 2) / 2;
-            v += kMaxLongitudinalAcceleration * kTimeBetweenPoints;
-            v = min(v, target_speed);
+            new_point.s -= kMaxLDeceleration * pow(kTimeBetweenPoints, 2) / 2;
+            v -= kMaxLAcceleration * kTimeBetweenPoints;
+            v = max(v, target_speed);
           }
 
-          d += dd;
-
-          sd_points_[i] = make_pair(s, d);
+          sd_points_[i] = new_point;
+          xy_points_[i] = map.FrenetToCartesian(new_point);
         }
       }
-      break;
 
-    case State::kPrepareChangeLane: {
-
-        auto sd = sd_points_[consumed_points];
+    case State::kChangeSpeed: {
+        FrenetPoint start;
+        double vd;
+        if (consumed_points == kNumberOfPoints) {
+          start.s = loc.s;
+          start.d = loc.d;
+          vd = 0;
+        }
+        else {
+          start = sd_points_[consumed_points];
+          vd = (start.d - sd_points_[consumed_points - 1].d) / kTimeBetweenPoints;
+        }
+        double a = (loc.v < target_speed) ? kMaxLAcceleration : -kMaxLAcceleration;
+        double time_to_target_speed = (target_speed - loc.v) / a;
 
         vector<double> s_start = {
-          sd.first, //localization.s,
-          localization.v,
+          start.s,
+          loc.v,
           0
         };
         vector<double> s_end = {
-          sd.first /*localization.s*/ + (localization.v + target_speed) * (kNumberOfPoints * kTimeBetweenPoints) / 2,
+          start.s + loc.v * time_to_target_speed + a * pow(time_to_target_speed, 2) / 2,
           target_speed,
           0
         };
         vector<double> d_start = {
-          sd.second, //localization.d,
-          0, //localization.d - sd_points_[consumed_points - 1].second,
+          start.d,
+          vd,
           0
         };
         vector<double> d_end = {
@@ -117,63 +136,102 @@ TrajectoryXY Trajectory::Generate(
           0
         };
 
-        // cout << s_start[0] << "," << s_start[1] << "," << s_start[2] << "," << endl;
-        // cout << s_end[0] << "," << s_end[1] << "," << s_end[2] << "," << endl;
-        // cout << d_start[0] << "," << d_start[1] << "," << d_start[2] << "," << endl;
-        // cout << d_end[0] << "," << d_end[1] << "," << d_end[2] << "," << endl;
+        auto s_coeffs = JMT(s_start, s_end, time_to_target_speed);
+        auto d_coeffs = JMT(d_start, d_end, time_to_target_speed);
+
+        int points_to_target_speed = int(ceil(time_to_target_speed / kTimeBetweenPoints));
+
+        FrenetPoint new_point = start;
+
+        for (int i = 0; i < kNumberOfPoints; i++) {
+
+          if (i < points_to_target_speed) {
+            new_point.s = PolyEval(s_coeffs, i * kTimeBetweenPoints);
+            new_point.d = PolyEval(d_coeffs, i * kTimeBetweenPoints);
+          }
+          else {
+            new_point.s += target_speed * kTimeBetweenPoints;
+            new_point.d = target_d;
+          }
+          sd_points_[i] = new_point;
+          xy_points_[i] = map.FrenetToCartesian(new_point);
+        }
+      }
+      break;
+
+
+    case State::kChangeLane: {
+
+        FrenetPoint start;
+        double vd;
+        if (consumed_points == kNumberOfPoints) {
+          start.s = loc.s;
+          start.d = loc.d;
+          vd = 0;
+        }
+        else {
+          start = sd_points_[consumed_points];
+          vd = (start.d - sd_points_[consumed_points - 1].d) / kTimeBetweenPoints;
+        }
+
+        vector<double> s_start = {
+          start.s,
+          loc.v,
+          0
+        };
+        vector<double> s_end = {
+          start.s + (loc.v + target_speed) * (kNumberOfPoints * kTimeBetweenPoints) / 2,
+          target_speed,
+          0
+        };
+        vector<double> d_start = {
+          start.d,
+          vd,
+          0
+        };
+        vector<double> d_end = {
+          target_d,
+          0,
+          0
+        };
 
         auto s_coeffs = JMT(s_start, s_end, kNumberOfPoints * kTimeBetweenPoints);
         auto d_coeffs = JMT(d_start, d_end, kNumberOfPoints * kTimeBetweenPoints);
 
+        FrenetPoint new_point;
         for (int i = 0; i < kNumberOfPoints; i++) {
-          double s = PolyEval(s_coeffs, i * kTimeBetweenPoints);
-          double d = PolyEval(d_coeffs, i * kTimeBetweenPoints);
-          sd_points_[i] = make_pair(s, d);
+          new_point.s = PolyEval(s_coeffs, i * kTimeBetweenPoints);
+          new_point.d = PolyEval(d_coeffs, i * kTimeBetweenPoints);
+          sd_points_[i] = new_point;
+          xy_points_[i] = map.FrenetToCartesian(new_point);
         }
 
       }
       break;
 
-    case State::kKeepLane:
-    case State::kChangeLane: {
+    case State::kKeepLane: {
 
-        auto sd1 = sd_points_[-1];
-        auto sd2 = sd_points_[-2];
+        FrenetPoint new_point = sd_points_[-1];
 
-        double s = sd1.first;
-        double d = sd1.second;
-        double v = (sd1.first - sd2.first) / kTimeBetweenPoints;
-        double dd = (target_d - sd1.second) / consumed_points;
-
-        cout << s << "-" << d << "-" << v << "-" << dd << "-" << consumed_points << endl;
+        double dd = (target_d - new_point.d) / consumed_points;
 
         for (int i = 0; i < consumed_points; i++) {
 
-          s += v * kTimeBetweenPoints;
+          new_point.s += target_speed * kTimeBetweenPoints;
+          new_point.d += dd;
 
-          if (v < target_speed) {
-            // Apply Constant acceleration
-            s += kMaxLongitudinalAcceleration * pow(kTimeBetweenPoints, 2) / 2;
-            v += kMaxLongitudinalAcceleration * kTimeBetweenPoints;
-            v = min(v, target_speed);
-          }
-
-          d += dd;
-
-          sd_points_.append(make_pair(s, d));
+          sd_points_.append(new_point);
+          xy_points_.append(map.FrenetToCartesian(new_point));
         }
       }
       break;
-
   }
 
-  vector<double> next_x_vals;
-  vector<double> next_y_vals;
+  TrajectoryXY next_trajectory;
   for(int i = 0; i < kNumberOfPoints; i++) {
-    auto xy = map.FrenetToCartesian(sd_points_[i]);
-    next_x_vals.push_back(xy.first);
-    next_y_vals.push_back(xy.second);
+    next_trajectory.x.push_back(xy_points_[i].x);
+    next_trajectory.y.push_back(xy_points_[i].y);
   }
 
-  return make_pair(next_x_vals, next_y_vals);
+  return next_trajectory;
 }

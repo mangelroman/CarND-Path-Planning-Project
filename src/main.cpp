@@ -171,12 +171,14 @@ int main() {
         	// Previous path data given to the Planner
         	vector<double> previous_path_x = j[1]["previous_path_x"];
         	vector<double> previous_path_y = j[1]["previous_path_y"];
-          TrajectoryXY previous_trajectory = make_pair(previous_path_x, previous_path_y);
+          TrajectoryXY previous_trajectory;
+          previous_trajectory.x =  previous_path_x;
+          previous_trajectory.y = previous_path_y;
 
         	// Previous path's end s and d values
-        	double end_path_s = j[1]["end_path_s"];
-        	double end_path_d = j[1]["end_path_d"];
-          FrenetPoint previous_coordinates = make_pair(end_path_s, end_path_d);
+          FrenetPoint previous_coordinates;
+          previous_coordinates.s = j[1]["end_path_s"];
+          previous_coordinates.d = j[1]["end_path_d"];
 
         	// Sensor Fusion Data, a list of all other cars on the same side of the road.
         	vector<vector<double>> sf_data = j[1]["sensor_fusion"];
@@ -197,8 +199,8 @@ int main() {
 
           auto trajectory = planner.Update(loc, sensor_fusion, previous_trajectory, previous_coordinates);
 
-        	msgJson["next_x"] = trajectory.first;
-        	msgJson["next_y"] = trajectory.second;
+        	msgJson["next_x"] = trajectory.x;
+        	msgJson["next_y"] = trajectory.y;
 
         	auto msg = "42[\"control\","+ msgJson.dump()+"]";
 

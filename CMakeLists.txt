@@ -10,7 +10,7 @@ set(CMAKE_CXX_FLAGS, "${CXX_FLAGS}")
 set(sources src/main.cpp
             src/planner.cpp
             src/map.cpp
-            src/vehicle.cpp
+            src/prediction.cpp
             src/behavior.cpp
             src/trajectory.cpp)
 

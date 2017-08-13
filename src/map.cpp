@@ -45,7 +45,7 @@ Map::Map(const string &map_file) {
   ifs.close();
 
   // Add padding samples at the end of the road to compute trajectories
-  // at the end of the road without bothering about s discontinuity
+  // without bothering about s discontinuity
   for(int i = 0; i < kNumberOfPaddingSamples; i++) {
     x_wp.push_back(x_wp[i]);
     y_wp.push_back(y_wp[i]);
@@ -62,15 +62,24 @@ Map::Map(const string &map_file) {
 
 Map::~Map() {}
 
-pair<double, double> Map::FrenetToCartesian(pair<double,double> sd) const {
+XYPoint Map::FrenetToCartesian(FrenetPoint frenet) const {
 
-  double s = get<0>(sd);
-  double d = get<1>(sd);
+  XYPoint result;
+  result.x = s_x_(frenet.s) + frenet.d * s_dx_(frenet.s);
+  result.y = s_y_(frenet.s) + frenet.d * s_dy_(frenet.s);
 
-  double x = s_x_(s) + d * s_dx_(s);
-  double y = s_y_(s) + d * s_dy_(s);
+  return result;
+}
 
-  return make_pair(x, y);
+double Map::ComputeDistance(double s1, double s2) const {
+  double d = s2 - s1;
+  if (d > kRoadLength / 2) {
+    d -= kRoadLength;
+  }
+  else if (d < -kRoadLength / 2) {
+    d += kRoadLength;
+  }
+  return d;
 }
 
 Lane Map::GetLane(double d) const {
@@ -94,5 +103,12 @@ Lane Map::GetLane(double d) const {
 }
 
 double Map::GetCenterOfLane(Lane lane) const {
-  return (double(lane) + 0.5) * kLaneWidth;
+  double d = (double(lane) + 0.5) * kLaneWidth;
+  if (lane == Lane::kRight) {
+    d -= kOuterRoadGuard;
+  }
+  if (lane == Lane::kLeft) {
+    d += kOuterRoadGuard;
+  }
+  return d;
 }

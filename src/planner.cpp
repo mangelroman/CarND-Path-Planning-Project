@@ -1,7 +1,7 @@
 #include "planner.h"
 
 #include <cmath>
-#include <string>
+#include <iostream>
 
 #include "spline.h"
 
@@ -14,13 +14,13 @@ Planner::~Planner() {
 }
 
 void Planner::Reset() {
-  vehicles_.clear();
+  prediction_.Reset();
   behavior_.Reset();
   trajectory_.Reset();
 }
 
 
-TrajectoryXY Planner::Update(Localization &localization,
+TrajectoryXY Planner::Update(Localization &loc,
                      std::vector<SensorFusion> &sensor_fusion,
                      TrajectoryXY &previous_trajectory,
                      FrenetPoint &previous_coordinates)
@@ -29,39 +29,11 @@ TrajectoryXY Planner::Update(Localization &localization,
     return previous_trajectory;
   }
 
-  // Update visible vehicles
-  for (auto &vehicle: vehicles_) {
-      vehicle.ClearVisible();
-  }
+  Lane best_lane = prediction_.GetBestLane(map_, loc, sensor_fusion);
+  BehaviorInfo behavior_info = behavior_.Update(map_, loc, sensor_fusion, best_lane);
 
-  for(SensorFusion &sf : sensor_fusion) {
-
-    bool found = false;
-    for (auto &vehicle: vehicles_) {
-      if (vehicle.GetId() == sf.id) {
-        vehicle.Update(map_, sf);
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      Vehicle vehicle(sf.id);
-      vehicle.Update(map_, sf);
-      vehicles_.push_back(vehicle);
-    }
-  }
-
-  for (auto it = vehicles_.begin(); it != vehicles_.end(); it++) {
-    if (it->IsVisible()) {
-      it->Predict();
-    }
-    else {
-      vehicles_.erase(it);
-    }
-  }
-
-
-  auto state = behavior_.Update(map_, localization, vehicles_);
-  return trajectory_.Generate(map_, localization, previous_trajectory, previous_coordinates, state);
+  cout << "BEST= " << int(best_lane) << "    STATE= " << int(behavior_info.state);
+  cout << "    TARGET_LANE= " << int(behavior_info.target_lane) << "    TARGET_SPEED=" << behavior_info.target_speed;
+  cout << "    LOCATION=" << loc.s << "/" << loc.d << "/" << loc.v << endl;
+  return trajectory_.Generate(map_, loc, previous_trajectory, previous_coordinates, behavior_info);
 }

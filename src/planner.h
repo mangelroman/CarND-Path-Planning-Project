@@ -6,17 +6,15 @@
 
 #include "types.h"
 #include "map.h"
-#include "vehicle.h"
+#include "prediction.h"
 #include "behavior.h"
 #include "trajectory.h"
-
-// TODO: take into account s discontinuity
 
 class Planner {
 
 private:
   Map map_;
-  std::list<Vehicle> vehicles_;
+  Prediction prediction_;
   Behavior behavior_;
   Trajectory trajectory_;
   int tick_;
@@ -29,7 +27,7 @@ public:
   void Reset();
 
   TrajectoryXY Update(
-    Localization &localization,
+    Localization &loc,
     std::vector<SensorFusion> &sf_data,
     TrajectoryXY &previous_trajectory,
     FrenetPoint &previous_coordinates

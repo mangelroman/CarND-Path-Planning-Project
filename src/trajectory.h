@@ -11,35 +11,37 @@ class Trajectory {
 private:
   static const size_t kNumberOfPoints = 200;
   const double kTimeBetweenPoints = 0.02;
-  const double kMaxLongitudinalAcceleration = 4; // Assuming 0 - 16m/s in 4 seconds
-  const double kMinLongitudinalAcceleration = -20; // Assuming 20m/s - 0 in 1 second
+  const double kMaxLAcceleration = 5;
+  const double kMaxLJerk = 9;
+  const double kMaxLDeceleration = -20; // Assuming 20m/s - 0 in 1 second
 
-  class FrenetPointBuffer {
+  template<class T, size_t N> class CircularBuffer {
   private:
-    FrenetPoint points_[kNumberOfPoints];
-    int front_ = 0;
+    T items_[N];
+    int front_;
 
   public:
-    FrenetPointBuffer() {}
-    ~FrenetPointBuffer() {}
+    CircularBuffer(): front_(0) { }
+    ~CircularBuffer() { }
 
-    void append(FrenetPoint value) {
-        points_[front_] = value;
-        front_ = (front_ + 1) % kNumberOfPoints;
+    void append(T value) {
+        items_[front_] = value;
+        front_ = (front_ + 1) % N;
     }
 
-    FrenetPoint& operator [] (int index) {
+    T& operator [] (int index) {
         if (index < 0) {
-          index += kNumberOfPoints;
+          index += N;
         }
-        int loc = (front_ + index) % kNumberOfPoints;
-        return points_[loc];
+        int loc = (front_ + index) % N;
+        return items_[loc];
     }
   };
 
-  FrenetPointBuffer sd_points_;
+  CircularBuffer<FrenetPoint,kNumberOfPoints> sd_points_;
+  CircularBuffer<XYPoint,kNumberOfPoints> xy_points_;
 
-  std::vector<double> JMT(std::vector<double> start, std::vector<double> end, double t);
+  std::vector<double> JMT(std::vector<double> &start, std::vector<double> &end, double t);
   double PolyEval(std::vector<double> &coeffs, double x);
 
 public:
@@ -51,7 +53,7 @@ public:
 
   TrajectoryXY Generate(
     Map &map,
-    Localization &localization,
+    Localization &loc,
     TrajectoryXY &previous_trajectory,
     FrenetPoint &previous_coordinates,
     BehaviorInfo &behavior);

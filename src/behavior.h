@@ -5,17 +5,15 @@
 
 #include "types.h"
 #include "map.h"
-#include "vehicle.h"
 
 class Behavior {
 
 private:
   const double kMaxTargetSpeed = 22;
-  const double kMinimumVehicleDistance = 30;
+  const double kMinimumVehicleDistance = 35;
+  const double kChangeLaneTolerance = 0.5;
 
   BehaviorInfo info_;
-
-  void SelectTargets(Map &map, Localization &localization, std::list<Vehicle> &vehicles);
 
 public:
 
@@ -24,7 +22,12 @@ public:
 
   void Reset();
 
-  BehaviorInfo Update(Map &map, Localization &localization, std::list<Vehicle> &vehicles);
+  BehaviorInfo Update(
+    Map &map,
+    Localization &loc,
+    std::vector<SensorFusion> &sensor_fusion,
+    Lane best_lane
+  );
 
 };
 

@@ -3,12 +3,6 @@
 
 #include <vector>
 
-enum class Prediction {
-  kStraight,
-  kChangeLeft,
-  kChangeRight
-};
-
 enum class Lane {
   kOutLeft = -1,
   kLeft = 0,
@@ -18,15 +12,28 @@ enum class Lane {
 };
 
 enum class State {
-  kStop,
-  kStart,
+  kStart = 0,
+  kChangeSpeed,
   kKeepLane,
-  kPrepareChangeLane,
   kChangeLane,
+  kEmergencyBreak,
+  kStop,
 };
 
-typedef std::pair<std::vector<double>,std::vector<double>> TrajectoryXY;
-typedef std::pair<double,double> FrenetPoint;
+typedef struct {
+  std::vector<double> x;
+  std::vector<double> y;
+} TrajectoryXY;
+
+typedef struct {
+  double s;
+  double d;
+} FrenetPoint;
+
+typedef struct {
+  double x;
+  double y;
+} XYPoint;
 
 typedef struct {
   int id;

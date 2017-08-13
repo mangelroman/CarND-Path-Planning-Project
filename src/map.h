@@ -13,6 +13,7 @@ private:
   const size_t kNumberOfLanes = 3;
   const double kLaneWidth = 4.0;
   const double kRoadLength = 6945.554;
+  const double kOuterRoadGuard = 0.3;
   const int    kNumberOfPaddingSamples = 10;
 
   tk::spline s_x_;
@@ -25,13 +26,14 @@ public:
   Map(const std::string &filename);
   ~Map();
 
-  std::pair<double, double> FrenetToCartesian(std::pair<double,double> sd) const;
+  XYPoint FrenetToCartesian(FrenetPoint frenet) const;
+  double ComputeDistance(double s1, double s2) const;
   Lane GetLane(double d) const;
   double GetCenterOfLane(Lane lane) const;
 
-  double GetRoadLength() const { return kNumberOfLanes; }
+  double GetRoadLength() const { return kRoadLength; }
   double GetLaneWidth() const { return kLaneWidth; }
-  size_t GetNumberOfLanes() const { return kRoadLength; }
+  size_t GetNumberOfLanes() const { return kNumberOfLanes; }
 
 };
 

@@ -65,6 +65,8 @@ Map::~Map() {}
 XYPoint Map::FrenetToCartesian(FrenetPoint frenet) const {
 
   XYPoint result;
+  while (frenet.s >= kRoadLength) frenet.s -= kRoadLength;
+
   result.x = s_x_(frenet.s) + frenet.d * s_dx_(frenet.s);
   result.y = s_y_(frenet.s) + frenet.d * s_dy_(frenet.s);
 
@@ -80,6 +82,18 @@ double Map::ComputeDistance(double s1, double s2) const {
     d += kRoadLength;
   }
   return d;
+}
+
+double Map::Curvature(double s1, double s2) const {
+
+	double d_heading_diff = atan2(s_dy_(s1), s_dx_(s1)) - atan2(s_dy_(s2), s_dx_(s2));
+  if (d_heading_diff < -M_PI) {
+      d_heading_diff += 2 * M_PI;
+  }
+  else if (d_heading_diff > M_PI) {
+    d_heading_diff -= 2 * M_PI;
+  }
+  return d_heading_diff;
 }
 
 Lane Map::GetLane(double d) const {

@@ -12,12 +12,11 @@ enum class Lane {
 };
 
 enum class State {
-  kStart = 0,
-  kChangeSpeed,
+  kStop = 0,
+  kStart,
   kKeepLane,
   kChangeLane,
-  kEmergencyBreak,
-  kStop,
+  kChangeSpeed
 };
 
 typedef struct {
@@ -35,6 +34,8 @@ typedef struct {
   double y;
 } XYPoint;
 
+typedef std::vector<std::vector<double>> SensorFusion;
+
 typedef struct {
   int id;
   double x;
@@ -43,7 +44,10 @@ typedef struct {
   double vy;
   double s;
   double d;
-} SensorFusion;
+  double distance;
+  double speed;
+  Lane lane;
+} VehicleInfo;
 
 typedef struct {
   double x;
@@ -59,5 +63,28 @@ typedef struct {
   Lane target_lane;
   double target_speed;
 } BehaviorInfo;
+
+template<class T, size_t N> class CircularBuffer {
+private:
+  T items_[N];
+  int front_;
+
+public:
+  CircularBuffer(): front_(0) { }
+  ~CircularBuffer() { }
+
+  void append(T value) {
+      items_[front_] = value;
+      front_ = (front_ + 1) % N;
+  }
+
+  T& operator [] (int index) {
+      if (index < 0) {
+        index += N;
+      }
+      int loc = (front_ + index) % N;
+      return items_[loc];
+  }
+};
 
 #endif // TYPES_H

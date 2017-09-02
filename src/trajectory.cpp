@@ -58,170 +58,137 @@ TrajectoryXY Trajectory::Generate(
   FrenetPoint &previous_coordinates,
   BehaviorInfo &behavior)
 {
+  State state = behavior.state;
+  double target_d = map.GetCenterOfLane(behavior.target_lane);
+  double target_speed = behavior.target_speed;
+  int consumed_points = kNumberOfPoints - previous_trajectory.x.size();
   if (loc.s < sd_points_[0].s) {
-    cout << "NEW LAP!!! Loc= " << loc.s << " Path[0]=" << sd_points_[0].s << endl;
+    cout << "NEW LAP!!!" << endl;
     for (int i = 0; i < kNumberOfPoints; i++) {
       sd_points_[i].s -= map.GetRoadLength();
     }
   }
 
-  State state = behavior.state;
-  double target_d = map.GetCenterOfLane(behavior.target_lane);
-  double target_speed = behavior.target_speed;
-  int consumed_points = kNumberOfPoints - previous_trajectory.x.size();
-
   switch(state) {
-
-    case State::kStart:
-      break;
 
     case State::kStop:
       break;
 
-    case State::kEmergencyBreak: {
-        FrenetPoint new_point;
-        new_point.s = loc.s;
-        new_point.d = loc.d;
-        double v = loc.v;
+    case State::kStart: {
+        vector<double> v_start = {loc.v, kAvgAcceleration, kAvgAcceleration};
+        vector<double> v_end = {target_speed, 0, 0};
+        vector<double> d_start = {loc.d, 0, 0};
+        vector<double> d_end = {target_d, 0, 0};
 
-        for (int i = 0; i < kNumberOfPoints; i++) {
-
-          new_point.s += v * kTimeBetweenPoints;
-
-          if (v > target_speed) {
-            // Apply Constant acceleration
-            new_point.s -= kMaxLDeceleration * pow(kTimeBetweenPoints, 2) / 2;
-            v -= kMaxLAcceleration * kTimeBetweenPoints;
-            v = max(v, target_speed);
-          }
-
-          sd_points_[i] = new_point;
-          xy_points_[i] = map.FrenetToCartesian(new_point);
-        }
-      }
-
-    case State::kChangeSpeed: {
-        FrenetPoint start;
-        double vd;
-        if (consumed_points == kNumberOfPoints) {
-          start.s = loc.s;
-          start.d = loc.d;
-          vd = 0;
-        }
-        else {
-          start = sd_points_[consumed_points];
-          vd = (start.d - sd_points_[consumed_points - 1].d) / kTimeBetweenPoints;
-        }
-        double a = (loc.v < target_speed) ? kMaxLAcceleration : -kMaxLAcceleration;
-        double time_to_target_speed = (target_speed - loc.v) / a;
-
-        vector<double> s_start = {
-          start.s,
-          loc.v,
-          0
-        };
-        vector<double> s_end = {
-          start.s + loc.v * time_to_target_speed + a * pow(time_to_target_speed, 2) / 2,
-          target_speed,
-          0
-        };
-        vector<double> d_start = {
-          start.d,
-          vd,
-          0
-        };
-        vector<double> d_end = {
-          target_d,
-          0,
-          0
-        };
-
-        auto s_coeffs = JMT(s_start, s_end, time_to_target_speed);
-        auto d_coeffs = JMT(d_start, d_end, time_to_target_speed);
-
-        int points_to_target_speed = int(ceil(time_to_target_speed / kTimeBetweenPoints));
-
-        FrenetPoint new_point = start;
-
-        for (int i = 0; i < kNumberOfPoints; i++) {
-
-          if (i < points_to_target_speed) {
-            new_point.s = PolyEval(s_coeffs, i * kTimeBetweenPoints);
-            new_point.d = PolyEval(d_coeffs, i * kTimeBetweenPoints);
-          }
-          else {
-            new_point.s += target_speed * kTimeBetweenPoints;
-            new_point.d = target_d;
-          }
-          sd_points_[i] = new_point;
-          xy_points_[i] = map.FrenetToCartesian(new_point);
-        }
-      }
-      break;
-
-
-    case State::kChangeLane: {
-
-        FrenetPoint start;
-        double vd;
-        if (consumed_points == kNumberOfPoints) {
-          start.s = loc.s;
-          start.d = loc.d;
-          vd = 0;
-        }
-        else {
-          start = sd_points_[consumed_points];
-          vd = (start.d - sd_points_[consumed_points - 1].d) / kTimeBetweenPoints;
-        }
-
-        vector<double> s_start = {
-          start.s,
-          loc.v,
-          0
-        };
-        vector<double> s_end = {
-          start.s + (loc.v + target_speed) * (kNumberOfPoints * kTimeBetweenPoints) / 2,
-          target_speed,
-          0
-        };
-        vector<double> d_start = {
-          start.d,
-          vd,
-          0
-        };
-        vector<double> d_end = {
-          target_d,
-          0,
-          0
-        };
-
-        auto s_coeffs = JMT(s_start, s_end, kNumberOfPoints * kTimeBetweenPoints);
+        auto v_coeffs = JMT(v_start, v_end, kNumberOfPoints * kTimeBetweenPoints);
         auto d_coeffs = JMT(d_start, d_end, kNumberOfPoints * kTimeBetweenPoints);
 
-        FrenetPoint new_point;
-        for (int i = 0; i < kNumberOfPoints; i++) {
-          new_point.s = PolyEval(s_coeffs, i * kTimeBetweenPoints);
-          new_point.d = PolyEval(d_coeffs, i * kTimeBetweenPoints);
-          sd_points_[i] = new_point;
-          xy_points_[i] = map.FrenetToCartesian(new_point);
-        }
+        FrenetPoint point;
+        point.s = loc.s;
+        point.d = loc.d;
 
+        for (int i = 0; i < kNumberOfPoints; i++) {
+          double next_s = point.s + PolyEval(v_coeffs, i * kTimeBetweenPoints) * kTimeBetweenPoints;
+          double curv = map.Curvature(point.s, next_s);
+
+          next_s += point.d * sin(curv);
+
+          point.s = next_s;
+          point.d = PolyEval(d_coeffs, i * kTimeBetweenPoints);
+
+          sd_points_[i] = point;
+        }
       }
       break;
 
     case State::kKeepLane: {
 
-        FrenetPoint new_point = sd_points_[-1];
-
-        double dd = (target_d - new_point.d) / consumed_points;
-
+        FrenetPoint point = sd_points_[-1];
         for (int i = 0; i < consumed_points; i++) {
 
-          new_point.s += target_speed * kTimeBetweenPoints;
-          new_point.d += dd;
+          double next_s = point.s + target_speed * kTimeBetweenPoints;
+          double curv = map.Curvature(point.s, next_s);
 
-          sd_points_.append(new_point);
-          xy_points_.append(map.FrenetToCartesian(new_point));
+          next_s += point.d * sin(curv);
+
+          point.s = next_s;
+          point.d = target_d;
+          sd_points_.append(point);
+        }
+      }
+      break;
+
+    case State::kChangeSpeed: {
+
+        FrenetPoint point;
+        int acc_points = int(ceil(abs(target_speed - loc.v) / (kAvgAcceleration * kTimeBetweenPoints)));
+
+        vector<double> v_start = {loc.v, 0, 0};
+        vector<double> v_end = {target_speed, 0, 0};
+        auto v_coeffs = JMT(v_start, v_end, acc_points * kTimeBetweenPoints);
+
+        point = sd_points_[consumed_points];
+
+        sd_points_[0] = point;
+        point.d = target_d;
+
+        for (int i = 1; i < kNumberOfPoints; i++) {
+          double next_s;
+          if (i < acc_points) {
+            next_s = point.s + PolyEval(v_coeffs, i * kTimeBetweenPoints) * kTimeBetweenPoints;
+          }
+          else {
+            next_s = point.s + target_speed * kTimeBetweenPoints;
+          }
+
+          double curvature = map.Curvature(point.s, next_s);
+          next_s += point.d * sin(curvature);
+
+          point.s = next_s;
+          sd_points_[i] = point;
+        }
+      }
+      break;
+
+    case State::kChangeLane: {
+
+        FrenetPoint point;
+        point = sd_points_[consumed_points];
+
+        int acc_points = int(ceil(abs(target_speed - loc.v) / (kAvgAcceleration * kTimeBetweenPoints)));
+        double vd = (point.d - sd_points_[consumed_points - 1].d) / kTimeBetweenPoints;
+
+        vector<double> v_start = {loc.v, 0, 0};
+        vector<double> v_end = {target_speed, 0, 0};
+        vector<double> d_start = { point.d, vd, 0 };
+        vector<double> d_end = { target_d, 0, 0 };
+        auto v_coeffs = JMT(v_start, v_end, acc_points * kTimeBetweenPoints);
+        auto d_coeffs = JMT(d_start, d_end, kPointsToChangeLane * kTimeBetweenPoints);
+
+
+        sd_points_[0] = point;
+
+        for (int i = 1; i < kNumberOfPoints; i++) {
+          double next_s;
+          if (i < acc_points) {
+            next_s = point.s + PolyEval(v_coeffs, i * kTimeBetweenPoints) * kTimeBetweenPoints;
+          }
+          else {
+            next_s = point.s + target_speed * kTimeBetweenPoints;
+          }
+
+          if (i < kPointsToChangeLane) {
+            point.d = PolyEval(d_coeffs, i * kTimeBetweenPoints);
+          }
+          else {
+            point.d = target_d;
+          }
+
+          double curvature = map.Curvature(point.s, next_s);
+          next_s += point.d * sin(curvature);
+
+          point.s = next_s;
+          sd_points_[i] = point;
         }
       }
       break;
@@ -229,8 +196,9 @@ TrajectoryXY Trajectory::Generate(
 
   TrajectoryXY next_trajectory;
   for(int i = 0; i < kNumberOfPoints; i++) {
-    next_trajectory.x.push_back(xy_points_[i].x);
-    next_trajectory.y.push_back(xy_points_[i].y);
+    XYPoint point = map.FrenetToCartesian(sd_points_[i]);
+    next_trajectory.x.push_back(point.x);
+    next_trajectory.y.push_back(point.y);
   }
 
   return next_trajectory;

@@ -10,10 +10,21 @@ class Behavior {
 
 private:
   const double kMaxTargetSpeed = 22;
-  const double kMinimumVehicleDistance = 35;
-  const double kChangeLaneTolerance = 0.5;
+  const double kMinimumFrontGap = 30;
+  const double kMinimumBackGap = 20;
+  const double kChangeLaneTolerance = 0.3;
+  const double kChangeSpeedTolerance = 0.5;
+
+  const double kLaneScoreFrontGapWeight = 1000;
+  const double kLaneScoreBackGapWeight = 100;
+  const double kLaneScoreSpeedWeight = 1;
+  const double kLaneScoreFarLaneWeight = 1000;
+
+  const double kChangeLaneCostMargin = 5;
 
   BehaviorInfo info_;
+
+  Lane GetBestLane(Map &map, Localization &loc, std::vector<VehicleInfo> &vehicles);
 
 public:
 
@@ -22,12 +33,7 @@ public:
 
   void Reset();
 
-  BehaviorInfo Update(
-    Map &map,
-    Localization &loc,
-    std::vector<SensorFusion> &sensor_fusion,
-    Lane best_lane
-  );
+  BehaviorInfo Update(Map &map, Localization &loc, std::vector<VehicleInfo> &vehicles);
 
 };
 

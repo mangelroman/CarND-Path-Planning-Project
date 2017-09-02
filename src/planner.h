@@ -28,7 +28,7 @@ public:
 
   TrajectoryXY Update(
     Localization &loc,
-    std::vector<SensorFusion> &sf_data,
+    SensorFusion &sf_data,
     TrajectoryXY &previous_trajectory,
     FrenetPoint &previous_coordinates
   );

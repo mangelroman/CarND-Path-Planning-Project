@@ -1,7 +1,7 @@
 #include "prediction.h"
 
 #include <iostream>
-#include <map>
+#include <vector>
 #include <cmath>
 
 using namespace std;
@@ -13,53 +13,35 @@ Prediction::~Prediction() {
 }
 
 void Prediction::Reset() {
-
 }
 
-Lane Prediction::GetBestLane(Map &map, Localization &loc, std::vector<SensorFusion> &sensor_fusion) {
-  Lane current_lane = map.GetLane(loc.d);
+std::vector<VehicleInfo> Prediction::Update(Map &map, Localization &loc, SensorFusion &sf_data) {
 
-  std::map<Lane,double> cost;
+  vector<VehicleInfo> vehicles;
+  vehicles.reserve(sf_data.size());
 
-  cost[Lane::kOutLeft] = 100000;
-  cost[Lane::kLeft] = (current_lane == Lane::kRight) ? kLaneScoreFarLaneWeight : 0;
-  cost[Lane::kCenter] = 0;
-  cost[Lane::kRight] = (current_lane == Lane::kLeft) ? kLaneScoreFarLaneWeight : 0;;
-  cost[Lane::kOutRight] = 100000;
+  for(auto&& item : sf_data) {
 
-  for (auto car : sensor_fusion) {
-    Lane car_lane = map.GetLane(car.d);
-    double gap = map.ComputeDistance(loc.s, car.s);
-    double car_speed = sqrt(pow(car.vx, 2) + pow(car.vy, 2));
-    double speed_diff = loc.v - car_speed;
-    int lane_diff = abs(int(current_lane) - int(car_lane));
+    double distance = map.ComputeDistance(loc.s, item[5]);
 
-    if ((gap < kVisibleFrontDistance) && (gap > -kVisibleBackDistance)) {
-       // Object is close by
-      if (gap > 0) {
-        cost[car_lane] += kLaneScoreFrontGapWeight / gap;
-        cost[car_lane] += kLaneScoreSpeedWeight * speed_diff;
-      }
-      else {
-        if (lane_diff > 0) {
-          // Car is not behind our lane
-          cost[car_lane] += kLaneScoreBackGapWeight / (-gap);
-          cost[car_lane] += kLaneScoreSpeedWeight * (-speed_diff);
-          cost[car_lane] += kChangeLaneCostMargin;
-        }
-      }
+    if ((distance < kVisibleFrontDistance) && (distance > -kVisibleBackDistance)) {
+
+      VehicleInfo vehicle;
+      vehicle.id = item[0];
+      vehicle.x = item[1];
+      vehicle.y = item[2];
+      vehicle.vx = item[3];
+      vehicle.vy = item[4];
+      vehicle.s = item[5];
+      vehicle.d = item[6];
+      vehicle.distance = distance;
+      vehicle.speed = sqrt(pow(vehicle.vx, 2) + pow(vehicle.vy, 2));
+      vehicle.lane = map.GetLane(vehicle.d);
+
+      vehicles.push_back(vehicle);
     }
-  }
-  /*
-  cout << "COSTS=(";
-  for (auto c : cost) {
-    cout << "L" << int(c.first) << ":" << c.second << ",";
-  }
-  cout << ")" << endl;
-  */
-  auto best_lane = min_element(cost.begin(), cost.end(), [] (const pair<Lane,double> & p1, const pair<Lane,double> & p2) {
-        return p1.second < p2.second;
-  });
 
-  return best_lane->first;
+  }
+
+  return vehicles;
 }

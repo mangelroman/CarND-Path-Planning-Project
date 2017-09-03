@@ -44,6 +44,8 @@ typedef struct {
   double vy;
   double s;
   double d;
+  double vs;
+  double vd;
   double distance;
   double speed;
   Lane lane;

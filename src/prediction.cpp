@@ -22,7 +22,7 @@ std::vector<VehicleInfo> Prediction::Update(Map &map, Localization &loc, SensorF
 
   for(auto&& item : sf_data) {
 
-    double distance = map.ComputeDistance(loc.s, item[5]);
+    double distance = map.Distance(loc.s, item[5]);
 
     if ((distance < kVisibleFrontDistance) && (distance > -kVisibleBackDistance)) {
 
@@ -34,6 +34,8 @@ std::vector<VehicleInfo> Prediction::Update(Map &map, Localization &loc, SensorF
       vehicle.vy = item[4];
       vehicle.s = item[5];
       vehicle.d = item[6];
+      vehicle.vs = map.TangentialVelocity(vehicle.s, vehicle.vx, vehicle.vy);
+      vehicle.vd = map.NormalVelocity(vehicle.s, vehicle.vx, vehicle.vy);
       vehicle.distance = distance;
       vehicle.speed = sqrt(pow(vehicle.vx, 2) + pow(vehicle.vy, 2));
       vehicle.lane = map.GetLane(vehicle.d);

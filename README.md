@@ -1,6 +1,6 @@
 # CarND-Path-Planning-Project
-Self-Driving Car Engineer Nanodegree Program
-   
+This is the first project of term 3 in the Self-Driving Car Engineer Nanodegree Program by Udacity.
+
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
 
@@ -11,6 +11,79 @@ In this project your goal is to safely navigate around a virtual highway with ot
 Each waypoint in the list contains  [x,y,s,dx,dy] values. x and y are the waypoint's map coordinate position, the s value is the distance along the road to get to that waypoint in meters, the dx and dy values define the unit normal vector pointing outward of the highway loop.
 
 The highway's waypoints loop around so the frenet s value, distance along the road, goes from 0 to 6945.554.
+
+## Description of the model
+
+The model is implemented in the `Planner`class, which contains the following classes:
+- `Map`class, responsible to manage road data and coordinate transformations.
+- `Prediction`class, responsible to predict the behavior of the vehicles surrounding us.
+- `Behavior`class, responsible to choose our car's behavior based on the environment.
+- `Trajectory`class, responsible to generate the path our car must follow based on the desired behavior and safety constraints.
+
+### Map class
+
+Based on this road data loaded from a file upon initialization, this module is able to perform the following calculations:
+- Frenet to cartesian coordinate translation (using spline library to interpolate map data)
+- Distance between 2 points given its frenet `s` coordinates (takes into account circular road)
+- Curvature of a road segment given its frenet `s` coordinates
+- Tangential (`s` dot) and Normal (`d` dot) velocities given the velocity vector
+- Several lane calculations based on frenet `d` coordinates
+
+This is a plot of the road data that shows its circular nature:
+
+![alt text](data/road.png)
+
+
+### Prediction class
+
+This module takes sensor fusion data and computes the probabilities of the different behaviors the surrounding vehicles may have. Based on our virtual highway simulator, these are the possible behaviors we should account for:
+1. Acceleration/Deceleration (change in tangential velocity)
+2. Changing lanes (change in normal velocity)
+
+For simplification purposes, the prediction module just computes the tangential and normal velocities in real-time instead of future probabilities of behaviors based on history. With this values the subsequent modules can predict whether a surrounding vehicle is changing speed or lanes.
+
+### Behavior class
+
+This module implements a Finite State Machine (FSM) to determine what to do based on the environment. This is the FSM diagram:
+![alt text](data/fsm.png)
+
+#### Stop and Start
+Stop is the initial state, and Start takes our car to the center of the lane at the maximum speed.
+
+#### Keep Lane
+If our car is already in the best lane at the target speed, it must stay there following the road.
+
+#### Changing Lanes
+The best lane is selected using a simple cost function. The `Behavior`class will always try to change to the best lane if the change is feasible. In order for a lane change to be feasible, there must be enough front and back gap once our car is in the target lane. The gaps are computed using vehicle distances and relative velocities.
+
+The cost function is designed to favor the center lane when all the lanes are empty.
+
+#### Changing Speed
+If there are other vehicles in front of us at a minimum distance, the target speed is set to the vehicle in front of us. Otherwise, the target speed is set to the maximum speed.
+
+### Trajectory class
+
+This module generates the best trajectory, always in frenet coordinates, in the next 4 seconds time frame based on the state given by the `Behavior` class. The previously generated trajectory is stored in a circular buffer for convenience, so the previous `(s,d)` points can be reused when applicable (i.e. `Keep Lane` state).
+
+#### JMT
+Jerk Minimizing Trajectory (JMT) algorithm is used to generate trajectories with smooth changes of speed (`s` coordinate) and lane (`d` coordinate).
+
+#### Safety and Comfort Constraints
+The trajectory module is also responsible to ensure the safety and comfort constraints are applied. These are:
+- Maximum Acceleration of 10 m/s^2
+- Maximum Jerk of 10 m/s^3
+- Maximum Speed of 50mph
+
+**Maximum Acceleration and Jerk**
+Ideally, the `Trajectory` class should generate multiple trajectories with different parameters and choose the one that ensures the acceleration and jerk values are within safety and comfort limits. However, for simplification purposes, the trajectories are generated with conservative values that in our simulator's environment are always below the given thresholds.
+
+**Maximum Speed**
+As the trajectories are always referred to frenet coordinates, the curvature of the road is used to ensure the maximum speed is never surpassed regardless of the lane (`d` coordinate) where the car is. To reach the target speed at any given lane, the `s` coordinate delta is obtained using this formula:
+
+```c
+s_delta = target_speed * time + d * sin(curvature);
+```
+where curvature is the difference of `d` vector angles between two `s` points computed by the `Map` class.
 
 ## Basic Build Instructions
 
@@ -38,13 +111,13 @@ Here is the data provided from the Simulator to the C++ Program
 #### Previous path data given to the Planner
 
 //Note: Return the previous list but with processed points removed, can be a nice tool to show how far along
-the path has processed since last time. 
+the path has processed since last time.
 
 ["previous_path_x"] The previous list of x points previously given to the simulator
 
 ["previous_path_y"] The previous list of y points previously given to the simulator
 
-#### Previous path's end s and d values 
+#### Previous path's end s and d values
 
 ["end_path_s"] The previous list's last point's frenet s value
 
@@ -52,7 +125,7 @@ the path has processed since last time.
 
 #### Sensor Fusion Data, a list of all other car's attributes on the same side of the road. (No Noise)
 
-["sensor_fusion"] A 2d vector of cars and then that car's [car's unique ID, car's x position in map coordinates, car's y position in map coordinates, car's x velocity in m/s, car's y velocity in m/s, car's s position in frenet coordinates, car's d position in frenet coordinates. 
+["sensor_fusion"] A 2d vector of cars and then that car's [car's unique ID, car's x position in map coordinates, car's y position in map coordinates, car's x velocity in m/s, car's y velocity in m/s, car's s position in frenet coordinates, car's d position in frenet coordinates.
 
 ## Details
 
@@ -82,7 +155,7 @@ A really helpful resource for doing this project and creating smooth trajectorie
   * Run either `install-mac.sh` or `install-ubuntu.sh`.
   * If you install from source, checkout to commit `e94b6e1`, i.e.
     ```
-    git clone https://github.com/uWebSockets/uWebSockets 
+    git clone https://github.com/uWebSockets/uWebSockets
     cd uWebSockets
     git checkout e94b6e1
     ```

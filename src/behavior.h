@@ -12,7 +12,7 @@ private:
   const double kMaxTargetSpeed = 22;
   const double kMinimumFrontGap = 30;
   const double kMinimumBackGap = 20;
-  const double kChangeLaneTolerance = 0.3;
+  const double kChangeLaneTolerance = 0.2;
   const double kChangeSpeedTolerance = 0.5;
 
   const double kLaneScoreFrontGapWeight = 1000;

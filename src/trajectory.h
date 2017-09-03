@@ -12,7 +12,7 @@ private:
   static const size_t kNumberOfPoints = 200;
   const size_t kPointsToChangeLane = 150;
   const double kTimeBetweenPoints = 0.02;
-  const double kAvgAcceleration = 5;
+  const double kAvgAcceleration = 4;
 
   CircularBuffer<FrenetPoint,kNumberOfPoints> sd_points_;
 

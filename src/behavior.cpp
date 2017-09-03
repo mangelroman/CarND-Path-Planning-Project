@@ -127,7 +127,7 @@ BehaviorInfo Behavior::Update(Map &map, Localization &loc, std::vector<VehicleIn
                 // Object is in our lane
                 if ((obj.distance < kMinimumFrontGap) && (obj.distance > 0) && (obj.speed < kMaxTargetSpeed)) {
                   // Object is blocking us
-                  info_.target_speed = obj.speed;
+                  info_.target_speed = 0.98 * obj.speed;
                   info_.state = State::kChangeSpeed;
                   // Exit for loop
                   break;

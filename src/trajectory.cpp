@@ -75,8 +75,8 @@ TrajectoryXY Trajectory::Generate(
       break;
 
     case State::kStart: {
-        vector<double> v_start = {loc.v, kAvgAcceleration, kAvgAcceleration};
-        vector<double> v_end = {0.98 * target_speed, 0, 0};
+        vector<double> v_start = {loc.v, 0, 0};
+        vector<double> v_end = {target_speed, kAvgAcceleration, 0};
         vector<double> d_start = {loc.d, 0, 0};
         vector<double> d_end = {target_d, 0, 0};
 
@@ -101,6 +101,7 @@ TrajectoryXY Trajectory::Generate(
       }
       break;
 
+    case State::kChangingLanes:
     case State::kKeepLane: {
 
         FrenetPoint point = sd_points_[-1];

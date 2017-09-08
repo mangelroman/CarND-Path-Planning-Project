@@ -39,9 +39,9 @@ TrajectoryXY Planner::Update(Localization &loc,
   cout << "  TARGET_SPEED=" << behavior_info.target_speed;
   cout << "  LOCATION=" << loc.s << "/" << loc.d << "/" << loc.v << endl;
 
-  // for(auto obj : vehicles) {
-  //   cout << "DISTANCE=" << obj.distance << " SPEED=" << obj.speed << " VS=" << obj.vs << " VD=" << obj.vd << endl;
-  // }
+  for(auto obj : vehicles) {
+    cout << obj.id << ": dist=" << obj.distance << "  speed=" << obj.speed << "  lane=" << int(obj.lane) << endl;
+  }
 
   return trajectory_.Generate(map_, loc, previous_trajectory, previous_coordinates, behavior_info);
 }

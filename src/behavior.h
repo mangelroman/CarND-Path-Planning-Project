@@ -10,9 +10,13 @@ class Behavior {
 
 private:
   const double kMaxTargetSpeed = 22;
-  const double kMinimumFrontGap = 30;
-  const double kMinimumBackGap = 20;
-  const double kChangeLaneTolerance = 0.2;
+  const double kStartTargetSpeed = 19;
+  const double kMinimumFrontGap = 20;
+  const double kReduceSpeedFactor = 0.15;
+  const double kChangeLaneMinimumFrontGap = 30;
+  const double kChangeLaneMinimumBackGap = 20;
+  const double kChangeLaneGapPeriod = 3;
+  const double kChangeLaneTolerance = 0.9;
   const double kChangeSpeedTolerance = 0.5;
 
   const double kLaneScoreFrontGapWeight = 1000;

@@ -45,5 +45,13 @@ std::vector<VehicleInfo> Prediction::Update(Map &map, Localization &loc, SensorF
 
   }
 
+  sort(
+    vehicles.begin(),
+    vehicles.end(),
+    [] (const VehicleInfo & v1, const VehicleInfo &v2) {
+      return v1.distance < v2.distance;
+    }
+  );
+
   return vehicles;
 }

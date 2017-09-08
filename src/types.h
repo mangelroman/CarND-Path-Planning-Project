@@ -17,6 +17,7 @@ enum class State {
   kStart,
   kKeepLane,
   kChangeLane,
+  kChangingLanes,
   kChangeSpeed
 };
 
